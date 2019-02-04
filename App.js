@@ -1,7 +1,7 @@
 import { ShortcutOptions } from "react-native-siri-shortcut";
 
 import React, { Component } from "react";
-import { StyleSheet, Text, View, Button } from "react-native";
+import { StyleSheet, Text, View, Button, AppStateIOS, AppState } from "react-native";
 import {
   SiriShortcutsEvent,
   donateShortcut,
@@ -13,9 +13,10 @@ import {
 import AddToSiriButton, {
   SiriButtonStyles
 } from "react-native-siri-shortcut/AddToSiriButton";
+import TouchID from 'react-native-touch-id';
 
 const opts1: ShortcutOptions = {
-  activityType: "com.github.gustash.SiriShortcutsExample.sayHello",
+  activityType: "Open Account Summary",
   title: "Say Hi",
   userInfo: {
     foo: 1,
@@ -45,27 +46,36 @@ type State = {
   shortcutActivityType: ?string,
   addToSiriStyle: 0 | 1 | 2 | 3
 };
-export default class App extends Component<Props, State> {
+
+export default class App extends Component {
   state = {
     shortcutInfo: null,
     shortcutActivityType: null,
-    addToSiriStyle: SiriButtonStyles.blackOutline
+    addToSiriStyle: SiriButtonStyles.blackOutline,
+    appState: AppState.currentState,
+    locked:true
   };
 
+  componentWillMount() {
+    TouchID.authenticate('Authenticate with fingerprint').then(success => {
+      console.log("Touch ID Authenticate ID => " + success);
+      this.setState({ locked: false });
+    }).catch(error => {
+      console.log("Touch ID Authenticate Error =>" + error);
+    });
+  }
+
   componentDidMount() {
+
     SiriShortcutsEvent.addListener(
       "SiriShortcutListener",
       this.handleSiriShortcut.bind(this)
     );
-
-    // This will suggest these two shortcuts so that they appear
-    // in Settings > Siri & Search, even if they are not yet
-    // donated. Suitable for shortcuts that you expect the user
-    // may want to use. (https://developer.apple.com/documentation/sirikit/shortcut_management/suggesting_shortcuts_to_users)
     suggestShortcuts([opts1, opts2]);
   }
 
   handleSiriShortcut({ userInfo, activityType }: any) {
+    console.log("Handle Siri ShortCut =>");
     this.setState({
       shortcutInfo: userInfo,
       shortcutActivityType: activityType
@@ -83,9 +93,10 @@ export default class App extends Component<Props, State> {
   async clearShortcut1() {
     try {
       await clearShortcutsWithIdentifiers([
-        "com.github.gustash.SiriShortcutsExample.sayHello"
+        "com.github.gustash.SiriShortcutsExample.sayHello",
+        console.log("Clear ShortCut =>"),
       ]);
-      alert("Cleared Shortcut 1");
+      alert("Cleared Shortcut 1 ");
     } catch (e) {
       alert("You're not running iOS 12!");
     }
@@ -136,29 +147,51 @@ export default class App extends Component<Props, State> {
   render() {
     const { shortcutInfo, shortcutActivityType, addToSiriStyle } = this.state;
     console.log(addToSiriStyle);
+    if (this.state.locked) {
+      return (
+        <View style={styles.container}>
+          <Text>Nagender You Rocks</Text>
+          <Text>
+            Click to Siri
+      </Text>
 
-    return (
-      <View style={styles.container}>
-        <Text>Nagender You Rocks</Text>
-        <Text>
-          Click to Siri
-        </Text>
-        
-        <AddToSiriButton
-          buttonStyle={addToSiriStyle}
-          onPress={() => {
-            presentShortcut(opts1, ({ status }) => {
-              console.log(`I was ${status}`);
-            });
-          }}
-          shortcut={opts1}
-        />
-        <Button
-          title="Swap Siri Button Theme"
-          onPress={this.swapSiriButtonTheme.bind(this)}
-        />
-      </View>
-    );
+          <Button
+            title="Create Shortcut 1"
+            onPress={this.setupShortcut1.bind(this)}
+          />
+          <Button
+            title="Clear Shortcut 1"
+            onPress={this.clearShortcut1.bind(this)}
+          />
+          <Button
+            title="Delete All Shortcuts"
+            onPress={this.clearShortcuts.bind(this)}
+          />
+          <AddToSiriButton
+            buttonStyle={addToSiriStyle}
+            onPress={() => {
+              presentShortcut(opts1, ({ status }) => {
+                console.log(`I was ${status}`);
+              });
+            }}
+            shortcut={opts1}
+          />
+
+          <Button
+            title="Swap Siri Button Theme"
+            onPress={this.swapSiriButtonTheme.bind(this)}
+          />
+        </View>
+      );
+    } else {
+      return (
+        <View style={styles.container}>
+          <Text>Welcome to Account Summary</Text>
+        </View>
+
+      );
+    }
+
   }
 }
 
